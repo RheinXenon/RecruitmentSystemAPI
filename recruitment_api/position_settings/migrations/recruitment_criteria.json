@@ -1,0 +1,28 @@
+{
+    "position": "前端开发工程师",
+    "required_skills": [
+        "HTML",
+        "JavaScript",
+        "css"
+    ],
+    "optional_skills": [
+        "vue3",
+        "react",
+        "Vue.js",
+        "AI"
+    ],
+    "min_experience": 1,
+    "education": [
+        "本科",
+        "大专"
+    ],
+    "certifications": [],
+    "salary_range": [
+        10000,
+        25000
+    ],
+    "project_requirements": {
+        "min_projects": 2,
+        "team_lead_experience": true
+    }
+}
