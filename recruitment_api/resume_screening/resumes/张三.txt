@@ -1,0 +1,9 @@
+姓名: 张三
+联系方式: 18800001111
+工作经验: 3年
+技能: HTML, CSS, JavaScript, Vue.js, TypeScript
+项目经历:
+- 项目A: 电商前端，负责页面重构和性能优化，使用Vue.js与Vuex，提升首屏速度30%.
+- 项目B: 管理后台，使用TypeScript与ElementUI，负责组件开发与复用。
+教育背景: 本科
+期望薪资: 面议

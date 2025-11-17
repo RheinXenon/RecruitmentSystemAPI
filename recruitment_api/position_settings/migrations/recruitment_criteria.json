@@ -11,18 +11,18 @@
         "Vue.js",
         "AI"
     ],
-    "min_experience": 1,
+    "min_experience": 2,
     "education": [
         "本科",
         "大专"
     ],
     "certifications": [],
     "salary_range": [
-        10000,
-        25000
+        12996,
+        20000
     ],
     "project_requirements": {
         "min_projects": 2,
-        "team_lead_experience": true
+        "team_lead_experience": false
     }
 }

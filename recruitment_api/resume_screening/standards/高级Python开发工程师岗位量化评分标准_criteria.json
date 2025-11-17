@@ -1,0 +1,32 @@
+{
+  "position": "高级Python开发工程师",
+  "required_skills": [
+    "Python",
+    "Django",
+    "FastAPI",
+    "PostgreSQL"
+  ],
+  "optional_skills": [
+    "Redis",
+    "Docker",
+    "Kubernetes",
+    "AWS"
+  ],
+  "min_experience": 5,
+  "education": [
+    "本科",
+    "硕士"
+  ],
+  "certifications": [
+    "AWS认证",
+    "Oracle认证"
+  ],
+  "salary_range": [
+    20000,
+    40000
+  ],
+  "project_requirements": {
+    "min_projects": 5,
+    "team_lead_experience": true
+  }
+}

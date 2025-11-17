@@ -1,0 +1,26 @@
+{
+  "file_name": "招聘评审结果.md",
+  "name": "李四简历",
+  "scores": {
+    "hr_score": 0.0,
+    "technical_score": 0.0,
+    "manager_score": 0.0,
+    "comprehensive_score": 0.0
+  },
+  "salary_suggestions": {
+    "hr_suggestion": "",
+    "technical_suggestion": "",
+    "manager_suggestion": "",
+    "final_suggestion": ""
+  },
+  "review_comments": {
+    "hr_comments": "",
+    "technical_comments": "",
+    "manager_comments": ""
+  },
+  "final_recommendation": {
+    "decision": "",
+    "reasons": ""
+  },
+  "conversation_history": []
+}
