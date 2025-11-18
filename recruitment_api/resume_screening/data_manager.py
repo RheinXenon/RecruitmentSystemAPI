@@ -55,6 +55,8 @@ def save_resume_screening_data(task: ResumeScreeningTask,
         existing_data.screening_score = extract_scores_from_json_report(json_report_content)
         existing_data.screening_summary = extract_summary_from_md_report(md_report_content)
         existing_data.task = task
+        # 保存JSON报告内容
+        existing_data.json_report_content = json_report_content
         existing_data.save()
         return existing_data
     except ResumeData.DoesNotExist:
@@ -68,7 +70,9 @@ def save_resume_screening_data(task: ResumeScreeningTask,
         candidate_name=candidate_name,
         resume_content=resume_content,
         resume_file_hash=resume_hash,
-        task=task
+        task=task,
+        # 保存JSON报告内容
+        json_report_content=json_report_content
     )
     
     # 提取评分和总结信息
@@ -153,7 +157,8 @@ def extract_summary_from_md_report(md_report_content: str) -> str:
 
 def get_or_create_screening_report(task: ResumeScreeningTask, 
                                   candidate_name: str, 
-                                  md_file_path: str) -> ScreeningReport:
+                                  md_file_path: str,
+                                  json_report_content: str = None) -> ScreeningReport:
     """
     获取或创建筛选报告记录
     
@@ -161,6 +166,7 @@ def get_or_create_screening_report(task: ResumeScreeningTask,
         task (ResumeScreeningTask): 筛选任务对象
         candidate_name (str): 候选人姓名
         md_file_path (str): MD文件路径
+        json_report_content (str): JSON报告内容
         
     Returns:
         ScreeningReport: 筛选报告对象
@@ -171,6 +177,10 @@ def get_or_create_screening_report(task: ResumeScreeningTask,
             task=task,
             original_filename__icontains=candidate_name
         )
+        # 如果提供了JSON报告内容，则更新
+        if json_report_content:
+            report.json_report_content = json_report_content
+            report.save()
         return report
     except ScreeningReport.DoesNotExist:
         pass
@@ -182,6 +192,8 @@ def get_or_create_screening_report(task: ResumeScreeningTask,
             report = ScreeningReport.objects.create(
                 task=task,
                 original_filename=md_filename,
+                # 保存JSON报告内容
+                json_report_content=json_report_content
             )
             # 保存MD文件
             report.md_file.save(md_filename, f)

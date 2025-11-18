@@ -89,14 +89,6 @@ class ResumeScreeningAPIView(APIView):
                         resume_content = resume['content']
                         break
                 
-                # 获取或创建报告记录，并保存简历内容
-                report = get_or_create_screening_report(task, candidate_name, md_file_path)
-                if report:
-                    # 保存简历内容到报告中
-                    report.resume_content = resume_content
-                    report.save()
-                    reports.append(report)
-                
                 # 读取报告文件内容
                 md_report_content = ""
                 json_report_content = ""
@@ -108,6 +100,14 @@ class ResumeScreeningAPIView(APIView):
                 if os.path.exists(json_file_path):
                     with open(json_file_path, 'r', encoding='utf-8') as f:
                         json_report_content = f.read()
+                
+                # 获取或创建报告记录，并保存简历内容和JSON报告内容
+                report = get_or_create_screening_report(task, candidate_name, md_file_path, json_report_content)
+                if report:
+                    # 保存简历内容到报告中
+                    report.resume_content = resume_content
+                    report.save()
+                    reports.append(report)
                 
                 # 保存到统一数据管理表
                 save_resume_screening_data(
@@ -171,6 +171,23 @@ class ScreeningTaskStatusAPIView(APIView):
                             report_data["position_info"] = task.position_data
                         
                         response_data['reports'].append(report_data)
+               
+                # 添加简历数据（包括JSON内容）
+                resume_data_list = ResumeData.objects.filter(task=task)
+                if resume_data_list.exists():
+                    response_data['resume_data'] = []
+                    for resume_data in resume_data_list:
+                        resume_data_info = {
+                            "candidate_name": resume_data.candidate_name,
+                            "position_title": resume_data.position_title,
+                            "scores": resume_data.screening_score,
+                            "summary": resume_data.screening_summary,
+                            "json_content": resume_data.json_report_content,  # JSON报告内容
+                            "resume_content": resume_data.resume_content,
+                            "report_md_url": resume_data.report_md_file.url if resume_data.report_md_file else None,
+                            "report_json_url": resume_data.report_json_file.url if resume_data.report_json_file else None,
+                        }
+                        response_data['resume_data'].append(resume_data_info)
 
             return JsonResponse(response_data)
 
@@ -286,3 +303,86 @@ class ResumeDataAPIView(APIView):
                 {"error": str(e)}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class ScreeningTaskHistoryAPIView(APIView):
+    """查询历史任务信息API"""
+
+    def get(self, request, format=None):
+        # 获取查询参数
+        status = request.GET.get('status', None)
+        page = int(request.GET.get('page', 1))
+        page_size = min(int(request.GET.get('page_size', 10)), 50)
+        
+        # 构建查询
+        tasks = ResumeScreeningTask.objects.all().order_by('-created_at')
+        
+        # 根据状态过滤
+        if status:
+            tasks = tasks.filter(status=status)
+            
+        # 分页
+        start = (page - 1) * page_size
+        end = start + page_size
+        paginated_tasks = tasks[start:end]
+        
+        # 构建响应数据
+        history_data = []
+        for task in paginated_tasks:
+            task_data = {
+                "task_id": str(task.id),
+                "status": task.status,
+                "progress": task.progress,
+                "current_step": task.current_step,
+                "total_steps": task.total_steps,
+                "created_at": task.created_at.isoformat()
+            }
+            
+            # 如果任务正在运行，包含当前发言者信息
+            if task.status == 'running' and task.current_speaker:
+                task_data['current_speaker'] = task.current_speaker
+
+            # 如果任务完成，包含报告下载链接以及岗位信息和简历内容
+            if task.status == 'completed':
+                reports = ScreeningReport.objects.filter(task=task)
+                if reports.exists():
+                    task_data['reports'] = []
+                    for report in reports:
+                        report_data = {
+                            "report_id": str(report.id),
+                            "report_filename": report.original_filename,
+                            "download_url": f"/api/screening/reports/{report.id}/download/",
+                            "resume_content": report.resume_content if report.resume_content else ""
+                        }
+                        
+                        # 如果任务中有岗位信息，添加到报告数据中
+                        if task.position_data:
+                            report_data["position_info"] = task.position_data
+                        
+                        task_data['reports'].append(report_data)
+                
+                # 添加简历数据（包括JSON内容）
+                resume_data_list = ResumeData.objects.filter(task=task)
+                if resume_data_list.exists():
+                    task_data['resume_data'] = []
+                    for resume_data in resume_data_list:
+                        resume_data_info = {
+                            "candidate_name": resume_data.candidate_name,
+                            "position_title": resume_data.position_title,
+                            "scores": resume_data.screening_score,
+                            "summary": resume_data.screening_summary,
+                            "json_content": resume_data.json_report_content,  # JSON报告内容
+                            "resume_content": resume_data.resume_content,
+                            "report_md_url": resume_data.report_md_file.url if resume_data.report_md_file else None,
+                            "report_json_url": resume_data.report_json_file.url if resume_data.report_json_file else None,
+                        }
+                        task_data['resume_data'].append(resume_data_info)
+            
+            history_data.append(task_data)
+        
+        return JsonResponse({
+            "tasks": history_data,
+            "total": tasks.count(),
+            "page": page,
+            "page_size": page_size
+        })

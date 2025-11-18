@@ -21,7 +21,8 @@ class ResumeScreeningTask(models.Model):
     total_steps = models.IntegerField(default=1)  # 总步骤数
     error_message = models.TextField(blank=True, null=True)
     current_speaker = models.CharField(max_length=100, blank=True, null=True)  # 当前发言者
-    position_data = models.JSONField(null=True, blank=True, verbose_name="岗位信息") # 岗位信息
+    # 添加岗位信息字段
+    position_data = models.JSONField(null=True, blank=True, verbose_name="岗位信息")
 
     class Meta:
         db_table = 'resume_screening_tasks'
@@ -35,7 +36,10 @@ class ScreeningReport(models.Model):
     created_at = models.DateTimeField(default=timezone.now)
     md_file = models.FileField(upload_to='screening_reports/%Y/%m/%d/')
     original_filename = models.CharField(max_length=255)
-    resume_content = models.TextField(null=True, blank=True, verbose_name="简历内容")  # 简历内容字段
+    # 添加简历内容字段
+    resume_content = models.TextField(null=True, blank=True, verbose_name="简历内容")
+    # 添加JSON报告内容字段
+    json_report_content = models.TextField(null=True, blank=True, verbose_name="JSON报告内容")
 
     class Meta:
         db_table = 'screening_reports'
@@ -63,6 +67,8 @@ class ResumeData(models.Model):
     resume_file_hash = models.CharField(max_length=64, unique=True, verbose_name="简历文件哈希值")
     report_md_file = models.FileField(upload_to='screening_reports/%Y/%m/%d/', null=True, blank=True, verbose_name="报告MD文件")
     report_json_file = models.FileField(upload_to='screening_reports/%Y/%m/%d/', null=True, blank=True, verbose_name="报告JSON文件")
+    # 添加JSON报告内容字段
+    json_report_content = models.TextField(null=True, blank=True, verbose_name="JSON报告内容")
     
     # 关联任务
     task = models.ForeignKey(ResumeScreeningTask, on_delete=models.SET_NULL, null=True, blank=True, related_name='resume_data')

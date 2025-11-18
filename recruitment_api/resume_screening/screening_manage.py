@@ -687,72 +687,92 @@ def extract_scores_and_comments(conversation_history):
 
         # 提取HR专家的评分和评语
         if speaker == "HR_Expert":
-            # 提取HR评分
-            hr_score_match = re.search(r'HR评分[：:]?\s*([0-9.]+)分', content)
+            # 改进的HR评分提取正则表达式，能处理多种格式包括粗体标记
+            hr_score_match = re.search(r'HR评分[：:]\s*\**([0-9.]+)\**分', content)
             if hr_score_match:
                 result["scores"]["hr_score"] = float(hr_score_match.group(1))
+            else:
+                # 备用方案：更宽松的匹配模式
+                hr_score_match = re.search(r'(?i)hr.*?评分[^\d]{0,10}([0-9.]+)分', content, re.DOTALL)
+                if hr_score_match:
+                    result["scores"]["hr_score"] = float(hr_score_match.group(1))
 
             # 提取HR薪资建议
-            hr_salary_match = re.search(r'建议月薪[：:]?\s*([0-9\-~～～～]+)', content)
+            hr_salary_match = re.search(r'建议月薪[：:]\s*\**([0-9\-~～～～]+)\**', content)
             if hr_salary_match:
                 result["salary_suggestions"]["hr_suggestion"] = hr_salary_match.group(1)
 
             # 保存HR评语（去除评分格式部分）
-            hr_comment = re.sub(r'HR评分[：:]?\s*[0-9.]+分.*?理由[：:]?\s*', '', content, flags=re.DOTALL)
-            hr_comment = re.sub(r'建议月薪[：:]?\s*[0-9\-~～～～]+.*', '', hr_comment, flags=re.DOTALL)
+            hr_comment = re.sub(r'HR评分[：:]\s*\**[0-9.]+\**分.*?理由[：:]\s*', '', content, flags=re.DOTALL)
+            hr_comment = re.sub(r'建议月薪[：:]\s*\**[0-9\-~～～～]+\**.*', '', hr_comment, flags=re.DOTALL)
             result["review_comments"]["hr_comments"] = hr_comment.strip()
 
         # 提取技术专家的评分和评语
         elif speaker == "Technical_Expert":
-            # 提取技术评分
-            tech_score_match = re.search(r'技术评分[：:]?\s*([0-9.]+)分', content)
+            # 改进的技术评分提取正则表达式
+            tech_score_match = re.search(r'技术评分[：:]\s*\**([0-9.]+)\**分', content)
             if tech_score_match:
                 result["scores"]["technical_score"] = float(tech_score_match.group(1))
+            else:
+                # 备用方案
+                tech_score_match = re.search(r'(?i)技术.*?评分[^\d]{0,10}([0-9.]+)分', content, re.DOTALL)
+                if tech_score_match:
+                    result["scores"]["technical_score"] = float(tech_score_match.group(1))
 
             # 提取技术薪资建议
-            tech_salary_match = re.search(r'建议月薪[：:]?\s*([0-9\-~～～～]+)', content)
+            tech_salary_match = re.search(r'建议月薪[：:]\s*\**([0-9\-~～～～]+)\**', content)
             if tech_salary_match:
                 result["salary_suggestions"]["technical_suggestion"] = tech_salary_match.group(1)
 
             # 保存技术评语
-            tech_comment = re.sub(r'技术评分[：:]?\s*[0-9.]+分.*?理由[：:]?\s*', '', content, flags=re.DOTALL)
-            tech_comment = re.sub(r'建议月薪[：:]?\s*[0-9\-~～～～]+.*', '', tech_comment, flags=re.DOTALL)
+            tech_comment = re.sub(r'技术评分[：:]\s*\**[0-9.]+\**分.*?理由[：:]\s*', '', content, flags=re.DOTALL)
+            tech_comment = re.sub(r'建议月薪[：:]\s*\**[0-9\-~～～～]+\**.*', '', tech_comment, flags=re.DOTALL)
             result["review_comments"]["technical_comments"] = tech_comment.strip()
 
         # 提取项目经理的评分和评语
         elif speaker == "Project_Manager_Expert":
-            # 提取管理评分
-            manager_score_match = re.search(r'管理评分[：:]?\s*([0-9.]+)分', content)
+            # 改进的管理评分提取正则表达式
+            manager_score_match = re.search(r'管理评分[：:]\s*\**([0-9.]+)\**分', content)
             if manager_score_match:
                 result["scores"]["manager_score"] = float(manager_score_match.group(1))
+            else:
+                # 备用方案
+                manager_score_match = re.search(r'(?i)管理.*?评分[^\d]{0,10}([0-9.]+)分', content, re.DOTALL)
+                if manager_score_match:
+                    result["scores"]["manager_score"] = float(manager_score_match.group(1))
 
             # 提取管理薪资建议
-            manager_salary_match = re.search(r'建议月薪[：:]?\s*([0-9\-~～～～]+)', content)
+            manager_salary_match = re.search(r'建议月薪[：:]\s*\**([0-9\-~～～～]+)\**', content)
             if manager_salary_match:
                 result["salary_suggestions"]["manager_suggestion"] = manager_salary_match.group(1)
 
             # 保存管理评语
-            manager_comment = re.sub(r'管理评分[：:]?\s*[0-9.]+分.*?理由[：:]?\s*', '', content, flags=re.DOTALL)
-            manager_comment = re.sub(r'建议月薪[：:]?\s*[0-9\-~～～～]+.*', '', manager_comment, flags=re.DOTALL)
+            manager_comment = re.sub(r'管理评分[：:]\s*\**[0-9.]+\**分.*?理由[：:]\s*', '', content, flags=re.DOTALL)
+            manager_comment = re.sub(r'建议月薪[：:]\s*\**[0-9\-~～～～]+\**.*', '', manager_comment, flags=re.DOTALL)
             result["review_comments"]["manager_comments"] = manager_comment.strip()
 
         # 提取Critic的最终建议
         elif speaker == "Critic":
-            # 提取综合评分
-            comp_score_match = re.search(r'综合评分[：:]?\s*([0-9.]+)分', content)
+            # 改进的综合评分提取正则表达式
+            comp_score_match = re.search(r'综合评分[：:]\s*\**([0-9.]+)\**分', content)
             if comp_score_match:
                 result["scores"]["comprehensive_score"] = float(comp_score_match.group(1))
+            else:
+                # 备用方案
+                comp_score_match = re.search(r'(?i)综合.*?评分[^\d]{0,10}([0-9.]+)分', content, re.DOTALL)
+                if comp_score_match:
+                    result["scores"]["comprehensive_score"] = float(comp_score_match.group(1))
 
             # 提取最终薪资建议
-            final_salary_match = re.search(r'建议月薪[：:]?\s*([0-9\-~～～～]+)', content)
+            final_salary_match = re.search(r'建议月薪[：:]\s*\**([0-9\-~～～～]+)\**', content)
             if final_salary_match:
                 result["salary_suggestions"]["final_suggestion"] = final_salary_match.group(1)
 
             # 提取最终决策
             decision_patterns = [
-                r'招聘建议[：:]?\s*(推荐面试|备选|不匹配|建议面试|通过|不通过)',
-                r'最终建议[：:]?\s*(推荐面试|备选|不匹配|建议面试|通过|不通过)',
-                r'决策[：:]?\s*(推荐面试|备选|不匹配|建议面试|通过|不通过)'
+                r'招聘建议[：:]\s*\***(推荐面试|备选|不匹配|建议面试|通过|不通过)\***',
+                r'最终建议[：:]\s*\***(推荐面试|备选|不匹配|建议面试|通过|不通过)\***',
+                r'决策[：:]\s*\***(推荐面试|备选|不匹配|建议面试|通过|不通过)\***'
             ]
 
             for pattern in decision_patterns:
@@ -1114,7 +1134,7 @@ def create_agents_with_current_criteria():
         请对简历进行详细分析，给出0-100分的评分，并提供具体的评分理由。
         在你自己评分的基础上，单独列出一行，在本岗位参考月薪资范围内给出你认为合适的薪资。
         你只需要从你HR的角度提出意见和理由。
-        评分格式：HR评分：[分数]分，理由：[详细分析]，建议月薪：[建议薪资]"""
+        评分格式（显示评分的部分不要加任何格式）：HR评分：[分数]分，理由：[详细分析]，建议月薪：[建议薪资]"""
     )
 
     # 4 技术骨干代理
@@ -1133,7 +1153,7 @@ def create_agents_with_current_criteria():
         请对简历进行详细技术分析，给出0-100分的评分，并提供具体的技术评价。
         在你自己评分的基础上，单独列出一行，在本岗位参考月薪资范围内给出你认为合适的薪资。
         你只需要从你技术骨干的角度提出意见和理由。
-        评分格式：技术评分：[分数]分，理由：[技术分析]，建议月薪：[建议薪资]"""
+        评分格式（显示评分的部分不要加任何格式）：技术评分：[分数]分，理由：[技术分析]，建议月薪：[建议薪资]"""
     )
 
     # 5 项目经理代理
@@ -1152,7 +1172,7 @@ def create_agents_with_current_criteria():
         请从项目管理角度分析简历，给出0-100分的评分，并提供具体的管理能力评价。
         在你自己评分的基础上，单独列出一行，在本岗位参考月薪资范围内给出你认为合适的薪资。
         你只需要从你项目经理的角度提出意见和理由。
-        评分格式：管理评分：[分数]分，理由：[管理能力分析]，建议月薪：[建议薪资]"""
+        评分格式（显示评分的部分不要加任何格式）：管理评分：[分数]分，理由：[管理能力分析]，建议月薪：[建议薪资]"""
     )
 
     # 6 评论员代理
@@ -1173,13 +1193,15 @@ def create_agents_with_current_criteria():
         - 最终的招聘建议（推荐面试/备选/不匹配）
         - 最终的建议月薪（如果最终的招聘建议是"不匹配"，则不需要提供月薪建议）
 
-        回复 APPROVE 表示评审完成。
+        请在你的发言开头给出综合评分，
+        评分格式（显示评分的部分不要加任何格式）：综合评分：[分数]分
         
         量化评分标准如下：
         职位：{recruitment_system.quantification_table['position']}
         必备技能：{', '.join(recruitment_system.quantification_table['criteria'].get('required_skills', []))}
         最低经验：{recruitment_system.quantification_table['criteria'].get('min_experience', 2)}年
-        参考月薪资：{recruitment_system.quantification_table['criteria'].get('salary_range', [8000, 20000])[0]}~{recruitment_system.quantification_table['criteria'].get('salary_range', [8000, 20000])[1]}元"""
+        参考月薪资：{recruitment_system.quantification_table['criteria'].get('salary_range', [8000, 20000])[0]}~{recruitment_system.quantification_table['criteria'].get('salary_range', [8000, 20000])[1]}元
+        回复 APPROVE 表示评审完成。"""
     )
     
     return user_proxy, assistant, hr_agent, technical_agent, manager_agent, critic
