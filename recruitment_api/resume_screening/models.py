@@ -46,6 +46,37 @@ class ScreeningReport(models.Model):
         ordering = ['-created_at']
 
 
+class ResumeGroup(models.Model):
+    """简历组模型 - 用于组织具有相同岗位信息的简历"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    created_at = models.DateTimeField(default=timezone.now)
+    
+    # 岗位信息（与组内所有简历相同）
+    position_title = models.CharField(max_length=255, verbose_name="岗位名称")
+    position_details = models.JSONField(verbose_name="岗位详细信息")
+    
+    # 岗位信息的哈希值，用于验证岗位信息一致性
+    position_hash = models.CharField(max_length=64, unique=True, verbose_name="岗位信息哈希值")
+    
+    # 组标识信息
+    group_name = models.CharField(max_length=255, verbose_name="简历组名称")
+    description = models.TextField(blank=True, null=True, verbose_name="组描述")
+    
+    # 统计信息
+    resume_count = models.IntegerField(default=0, verbose_name="简历数量")
+    
+    class Meta:
+        db_table = 'resume_groups'
+        ordering = ['-created_at']
+        verbose_name = "简历组"
+        verbose_name_plural = "简历组"
+        indexes = [
+            models.Index(fields=['position_title']),
+            models.Index(fields=['position_hash']),
+            models.Index(fields=['created_at']),
+        ]
+
+
 class ResumeData(models.Model):
     """简历数据统一管理模型"""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -73,6 +104,9 @@ class ResumeData(models.Model):
     # 关联任务
     task = models.ForeignKey(ResumeScreeningTask, on_delete=models.SET_NULL, null=True, blank=True, related_name='resume_data')
     report = models.ForeignKey(ScreeningReport, on_delete=models.SET_NULL, null=True, blank=True, related_name='resume_data')
+    
+    # 关联简历组
+    group = models.ForeignKey(ResumeGroup, on_delete=models.SET_NULL, null=True, blank=True, related_name='resumes')
     
     class Meta:
         db_table = 'resume_data'

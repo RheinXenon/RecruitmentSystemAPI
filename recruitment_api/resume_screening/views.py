@@ -3,7 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.http import FileResponse, JsonResponse
-from .models import ResumeScreeningTask, ScreeningReport, ResumeData
+from .models import ResumeScreeningTask, ScreeningReport, ResumeData, ResumeGroup
 from .serializers import ResumeScreeningSerializer
 from .screening_manage import parse_position_resumes_json, run_resume_screening_from_payload, set_current_task
 from .data_manager import save_resume_screening_data, get_or_create_screening_report
@@ -127,11 +127,15 @@ class ResumeScreeningAPIView(APIView):
             task.save()
             
         except Exception as e:
+            import traceback
             # 更新任务状态为失败
             task.status = 'failed'
-            task.error_message = str(e)
+            task.error_message = f"{str(e)}\n{traceback.format_exc()}"
             task.current_speaker = None  # 清除当前发言者信息
             task.save()
+            # 打印详细错误信息到控制台
+            print(f"任务执行失败: {str(e)}")
+            print(traceback.format_exc())
 
 
 class ScreeningTaskStatusAPIView(APIView):
@@ -178,6 +182,7 @@ class ScreeningTaskStatusAPIView(APIView):
                     response_data['resume_data'] = []
                     for resume_data in resume_data_list:
                         resume_data_info = {
+                            "id": str(resume_data.id),  # 添加ID字段
                             "candidate_name": resume_data.candidate_name,
                             "position_title": resume_data.position_title,
                             "scores": resume_data.screening_score,
@@ -305,6 +310,312 @@ class ResumeDataAPIView(APIView):
             )
 
 
+class CreateResumeGroupAPIView(APIView):
+    """
+    创建简历组API
+    首次创建简历组时必须要有对应的一个或多个初筛记录，
+    保证这几组记录对应同一个岗位（校验码值一样），否则返回错误
+    """
+
+    def post(self, request, format=None):
+        """
+        创建简历组
+        请求参数：
+        - group_name: 简历组名称
+        - description: 描述（可选）
+        - resume_data_ids: 简历数据ID列表
+        """
+        try:
+            print(request.data)
+
+            group_name = request.data.get('group_name')
+            description = request.data.get('description', '')
+            resume_data_ids = request.data.get('resume_data_ids', [])
+            
+            # 参数校验
+            if not group_name:
+                return Response(
+                    {"error": "缺少参数: group_name"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            if not resume_data_ids or not isinstance(resume_data_ids, list):
+                return Response(
+                    {"error": "缺少参数或参数格式错误: resume_data_ids"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # 获取简历数据
+            resume_data_list = ResumeData.objects.filter(id__in=resume_data_ids)
+
+            print("resume_data_list:", resume_data_list)
+            
+            # 检查是否所有简历数据都存在
+            if len(resume_data_list) != len(resume_data_ids):
+                existing_ids = [str(resume.id) for resume in resume_data_list]
+                missing_ids = [rid for rid in resume_data_ids if rid not in existing_ids]
+                return Response(
+                    {"error": f"部分简历数据不存在，缺少的ID: {missing_ids}"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # 检查是否为空列表
+            if len(resume_data_list) == 0:
+                return Response(
+                    {"error": "至少需要一个简历数据"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # 检查所有简历是否属于同一岗位
+            # 获取第一个简历的岗位信息作为基准
+            first_resume = resume_data_list[0]
+            base_position_title = first_resume.position_title
+            base_position_details = first_resume.position_details
+            
+            # 检查其他简历是否与第一个简历的岗位信息一致
+            mismatched_resumes = []
+            for resume_data in resume_data_list[1:]:
+                if (resume_data.position_title != base_position_title or 
+                    resume_data.position_details != base_position_details):
+                    mismatched_resumes.append({
+                        "resume_id": str(resume_data.id),
+                        "resume_position_title": resume_data.position_title,
+                        "base_position_title": base_position_title
+                    })
+            
+            if mismatched_resumes:
+                print("不属于同一岗位")
+                return Response(
+                    {
+                        "error": "所有简历必须属于同一岗位",
+                        "mismatched_resumes": mismatched_resumes,
+                        "first_resume_id": str(first_resume.id)
+                    }, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # 计算岗位信息哈希值
+            import hashlib
+            import json
+            
+            position_info_str = json.dumps({
+                "position_title": base_position_title,
+                "position_details": base_position_details
+            }, sort_keys=True)
+            
+            position_hash = hashlib.sha256(position_info_str.encode('utf-8')).hexdigest()
+            
+            # 检查是否已存在相同的岗位哈希值的简历组
+            from .models import ResumeGroup
+            existing_group = ResumeGroup.objects.filter(position_hash=position_hash).first()
+            
+            if existing_group:
+                # 如果已存在该岗位的简历组，则直接使用该组
+                resume_group = existing_group
+            else:
+                # 创建新的简历组
+                resume_group = ResumeGroup.objects.create(
+                    position_title=base_position_title,
+                    position_details=base_position_details,
+                    position_hash=position_hash,
+                    group_name=group_name,
+                    description=description,
+                    resume_count=len(resume_data_list)
+                )
+            
+            # 将简历数据关联到简历组
+            for resume_data in resume_data_list:
+                resume_data.group = resume_group
+                resume_data.save()
+            
+            # 更新简历组中的简历数量
+            resume_group.resume_count = resume_data_list.count()
+            resume_group.save()
+            
+            return Response({
+                "message": "简历组创建成功",
+                "group_id": str(resume_group.id),
+                "group_name": resume_group.group_name,
+                "resume_count": resume_group.resume_count
+            }, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            return Response(
+                {"error": f"创建简历组时发生错误: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class ResumeGroupListAPIView(APIView):
+    """
+    简历组列表API - 支持分页查询
+    """
+
+    def get(self, request, format=None):
+        """
+        获取简历组列表，支持分页
+        查询参数：
+        - page: 页码，默认为1
+        - page_size: 每页数量，默认为10，最大50
+        - position_title: 岗位名称（可选，用于筛选）
+        - include_resumes: 是否包含简历信息，默认为false
+        """
+        try:
+            # 获取查询参数
+            page = int(request.GET.get('page', 1))
+            page_size = min(int(request.GET.get('page_size', 10)), 50)
+            position_title = request.GET.get('position_title', None)
+            include_resumes = request.GET.get('include_resumes', 'false').lower() == 'true'
+            
+            # 构建查询
+            groups = ResumeGroup.objects.all().order_by('-created_at')
+            
+            # 根据岗位名称筛选
+            if position_title:
+                groups = groups.filter(position_title__icontains=position_title)
+            
+            # 分页
+            start = (page - 1) * page_size
+            end = start + page_size
+            paginated_groups = groups[start:end]
+            
+            # 构建响应数据
+            groups_data = []
+            for group in paginated_groups:
+                # 获取关联的简历数据数量
+                resume_count = group.resumes.count()
+                
+                group_data = {
+                    "id": str(group.id),
+                    "group_name": group.group_name,
+                    "position_title": group.position_title,
+                    "description": group.description,
+                    "resume_count": resume_count,
+                    "created_at": group.created_at.isoformat()
+                }
+                
+                # 如果需要包含简历信息
+                if include_resumes:
+                    resumes = group.resumes.all()
+                    resume_data = []
+                    for resume in resumes:
+                        resume_data.append({
+                            "id": str(resume.id),
+                            "candidate_name": resume.candidate_name,
+                            "position_title": resume.position_title,
+                            "screening_score": resume.screening_score,
+                            "screening_summary": resume.screening_summary,
+                            "resume_content": resume.resume_content,
+                            "created_at": resume.created_at.isoformat(),
+                            "report_md_url": resume.report_md_file.url if resume.report_md_file else None,
+                            "report_json_url": resume.report_json_file.url if resume.report_json_file else None,
+                        })
+                    group_data["resumes"] = resume_data
+                
+                groups_data.append(group_data)
+            
+            return JsonResponse({
+                "groups": groups_data,
+                "total": groups.count(),
+                "page": page,
+                "page_size": page_size
+            })
+            
+        except Exception as e:
+            return Response(
+                {"error": f"查询简历组时发生错误: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class AddResumeToGroupAPIView(APIView):
+    """
+    向现有简历组添加新简历API
+    """
+
+    def post(self, request, format=None):
+        """
+        向指定简历组添加新简历
+        请求参数：
+        - group_id: 简历组ID
+        - resume_data_id: 简历数据ID
+        """
+        try:
+            group_id = request.data.get('group_id')
+            resume_data_id = request.data.get('resume_data_id')
+            
+            # 参数校验
+            if not group_id:
+                return Response(
+                    {"error": "缺少参数: group_id"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            if not resume_data_id:
+                return Response(
+                    {"error": "缺少参数: resume_data_id"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # 获取简历组
+            try:
+                resume_group = ResumeGroup.objects.get(id=group_id)
+            except ResumeGroup.DoesNotExist:
+                return Response(
+                    {"error": "简历组不存在"}, 
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # 获取简历数据
+            try:
+                resume_data = ResumeData.objects.get(id=resume_data_id)
+            except ResumeData.DoesNotExist:
+                return Response(
+                    {"error": "简历数据不存在"}, 
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # 检查简历是否已经属于该组
+            if resume_data.group == resume_group:
+                return Response(
+                    {"error": "简历数据已属于该简历组"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # 检查简历是否与简历组属于同一岗位
+            if (resume_data.position_title != resume_group.position_title or 
+                resume_data.position_details != resume_group.position_details):
+                return Response(
+                    {
+                        "error": "简历与简历组不属于同一岗位",
+                        "resume_position_title": resume_data.position_title,
+                        "group_position_title": resume_group.position_title
+                    }, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # 将简历数据关联到简历组
+            resume_data.group = resume_group
+            resume_data.save()
+            
+            # 更新简历组中的简历数量
+            resume_group.resume_count = resume_group.resumes.count()
+            resume_group.save()
+            
+            return Response({
+                "message": "简历成功添加到简历组",
+                "group_id": str(resume_group.id),
+                "group_name": resume_group.group_name,
+                "resume_count": resume_group.resume_count
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response(
+                {"error": f"添加简历到简历组时发生错误: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
 class ScreeningTaskHistoryAPIView(APIView):
     """查询历史任务信息API"""
 
@@ -367,6 +678,7 @@ class ScreeningTaskHistoryAPIView(APIView):
                     task_data['resume_data'] = []
                     for resume_data in resume_data_list:
                         resume_data_info = {
+                            "id": str(resume_data.id),  # 添加ID字段
                             "candidate_name": resume_data.candidate_name,
                             "position_title": resume_data.position_title,
                             "scores": resume_data.screening_score,

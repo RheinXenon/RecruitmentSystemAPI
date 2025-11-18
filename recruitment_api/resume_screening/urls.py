@@ -7,4 +7,7 @@ urlpatterns = [
     path('tasks-history/', views.ScreeningTaskHistoryAPIView.as_view(), name='screening-task-history'),
     path('reports/<uuid:report_id>/download/', views.ScreeningReportDownloadAPIView.as_view(), name='screening-report-download'),
     path('data/', views.ResumeDataAPIView.as_view(), name='resume-data'),
+    path('groups/create/', views.CreateResumeGroupAPIView.as_view(), name='create-resume-group'),
+    path('groups/add-resume/', views.AddResumeToGroupAPIView.as_view(), name='add-resume-to-group'),
+    path('groups/', views.ResumeGroupListAPIView.as_view(), name='resume-group-list'),
 ]
