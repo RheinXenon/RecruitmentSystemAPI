@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "position_settings",
     "resume_screening",
+    "video_analysis",
 ]
 
 MIDDLEWARE = [

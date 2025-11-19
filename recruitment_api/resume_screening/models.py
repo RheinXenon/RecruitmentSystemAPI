@@ -48,6 +48,14 @@ class ScreeningReport(models.Model):
 
 class ResumeGroup(models.Model):
     """简历组模型 - 用于组织具有相同岗位信息的简历"""
+    # 状态选项
+    STATUS_CHOICES = [
+        ('pending', '待分析'),
+        ('interview_analysis', '面试分析中'),
+        ('comprehensive_screening', '综合筛选中'),
+        ('completed', '已完成'),
+    ]
+    
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     created_at = models.DateTimeField(default=timezone.now)
     
@@ -65,6 +73,9 @@ class ResumeGroup(models.Model):
     # 统计信息
     resume_count = models.IntegerField(default=0, verbose_name="简历数量")
     
+    # 状态信息
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='pending', verbose_name="状态")
+    
     class Meta:
         db_table = 'resume_groups'
         ordering = ['-created_at']
@@ -74,6 +85,7 @@ class ResumeGroup(models.Model):
             models.Index(fields=['position_title']),
             models.Index(fields=['position_hash']),
             models.Index(fields=['created_at']),
+            models.Index(fields=['status']),
         ]
 
 
@@ -107,6 +119,9 @@ class ResumeData(models.Model):
     
     # 关联简历组
     group = models.ForeignKey(ResumeGroup, on_delete=models.SET_NULL, null=True, blank=True, related_name='resumes')
+    
+    # 关联视频分析记录（一对一关系，每个简历数据只能对应一个视频记录）
+    video_analysis = models.OneToOneField('video_analysis.VideoAnalysis', on_delete=models.SET_NULL, null=True, blank=True, related_name='linked_resume_data')
     
     class Meta:
         db_table = 'resume_data'

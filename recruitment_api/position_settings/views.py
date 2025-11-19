@@ -21,6 +21,7 @@ def recruitment_criteria_api(request):
                 data = json.load(f)
             return JsonResponse({'code': 200, 'message': '成功', 'data': data})
         except FileNotFoundError:
+            print("文件不存在")
             return JsonResponse({'code': 404, 'message': '文件不存在'}, status=404)
         except json.JSONDecodeError:
             return JsonResponse({'code': 500, 'message': '文件格式错误，非有效JSON'}, status=500)
