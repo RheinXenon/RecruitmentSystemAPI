@@ -1,9 +1,57 @@
+import threading
+import time
+import random
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.http import JsonResponse
 from .models import VideoAnalysis
+from resume_screening.models import ResumeData
 import uuid
+
+
+def simulate_video_analysis(video_analysis_id):
+    """
+    模拟视频分析过程的函数
+    这个函数会在后台线程中运行，模拟视频分析过程
+    """
+    try:
+        # 等待一段时间模拟分析过程（5-10秒）
+        time.sleep(random.randint(1, 2))
+        
+        # 获取视频分析记录
+        video_analysis = VideoAnalysis.objects.get(id=video_analysis_id)
+        
+        # 生成模拟的分析结果
+        video_analysis.fraud_score = round(random.uniform(0.05, 0.3), 3)  # 欺诈评分
+        video_analysis.neuroticism_score = round(random.uniform(0.2, 0.8), 3)  # 神经质评分
+        video_analysis.extraversion_score = round(random.uniform(0.3, 0.9), 3)  # 外倾性评分
+        video_analysis.openness_score = round(random.uniform(0.4, 0.95), 3)  # 开放性评分
+        video_analysis.agreeableness_score = round(random.uniform(0.5, 0.95), 3)  # 宜人性评分
+        video_analysis.conscientiousness_score = round(random.uniform(0.6, 0.98), 3)  # 尽责性评分
+        video_analysis.confidence_score = round(random.uniform(0.8, 0.99), 3)  # 置信度评分
+        
+        # 生成模拟摘要
+        video_analysis.summary = f"模拟分析完成。候选人表现出较强的{'外倾性' if video_analysis.extraversion_score > 0.7 else '尽责性'}特征。"
+        
+        # 更新状态为完成
+        video_analysis.status = 'completed'
+        
+        # 保存分析结果
+        video_analysis.save()
+        
+    except VideoAnalysis.DoesNotExist:
+        # 视频分析记录不存在，记录错误但不抛出异常
+        pass
+    except Exception as e:
+        # 如果出现异常，更新状态为失败
+        try:
+            video_analysis = VideoAnalysis.objects.get(id=video_analysis_id)
+            video_analysis.status = 'failed'
+            video_analysis.error_message = f"模拟分析过程中发生错误: {str(e)}"
+            video_analysis.save()
+        except VideoAnalysis.DoesNotExist:
+            pass
 
 
 class VideoAnalysisAPIView(APIView):
@@ -58,7 +106,6 @@ class VideoAnalysisAPIView(APIView):
             resume_data = None
             if resume_data_id:
                 try:
-                    from resume_screening.models import ResumeData
                     resume_data = ResumeData.objects.get(id=resume_data_id)
                 except ResumeData.DoesNotExist:
                     return Response(
@@ -78,12 +125,22 @@ class VideoAnalysisAPIView(APIView):
             
             # 如果提供了简历数据ID且存在，则建立关联
             if resume_data:
+                print("简历数据ID且存在，则建立关联")
                 resume_data.video_analysis = video_analysis
                 resume_data.save()
             
+            # 启动模拟分析线程
+            print("启动线程")
+            analysis_thread = threading.Thread(
+                target=simulate_video_analysis,
+                args=(video_analysis.id,)
+            )
+            analysis_thread.daemon = True  # 设置为守护线程
+            analysis_thread.start()
+            
             # 返回成功响应
             response_data = {
-                "message": "视频数据接收成功",
+                "message": "视频数据接收成功，分析已在后台开始",
                 "video_id": str(video_analysis.id),
                 "video_name": video_analysis.video_name,
                 "candidate_name": video_analysis.candidate_name,
@@ -142,7 +199,7 @@ class VideoAnalysisStatusAPIView(APIView):
                     "confidence_score": video_analysis.confidence_score
                 })
             
-            # 如果有错误信息，添加到响应中
+            # 如果分析失败，添加错误信息
             if video_analysis.status == 'failed' and video_analysis.error_message:
                 response_data["error_message"] = video_analysis.error_message
             

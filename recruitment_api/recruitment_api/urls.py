@@ -20,5 +20,5 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('position-settings/', include('position_settings.urls')),
     path('resume-screening/', include('resume_screening.urls')),
-    path('vidio-analysis/', include('video_analysis.urls')),
+    path('video-analysis/', include('video_analysis.urls')),
 ]

@@ -292,6 +292,8 @@ class ScreeningReportDetailAPIView(APIView):
                 "resume_content": resume_data.resume_content,
                 "json_report_content": resume_data.json_report_content,
                 "report_json_url": resume_data.report_json_file.url if resume_data.report_json_file else None,
+                # 添加关联的视频ID字段
+                "video_analysis_id": str(resume_data.video_analysis.id) if resume_data.video_analysis else None,
             }
             
             # 添加任务信息
