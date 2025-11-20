@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "position_settings",
     "resume_screening",
     "video_analysis",
+    'final_recommend'
 ]
 
 MIDDLEWARE = [

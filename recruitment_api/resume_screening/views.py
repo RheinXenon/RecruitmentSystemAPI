@@ -7,6 +7,7 @@ from .models import ResumeScreeningTask, ScreeningReport, ResumeData, ResumeGrou
 from .serializers import ResumeScreeningSerializer
 from .screening_manage import parse_position_resumes_json, run_resume_screening_from_payload, set_current_task
 from .data_manager import save_resume_screening_data, get_or_create_screening_report
+from .group_status_manager import update_group_status_based_on_video_analysis
 import uuid
 import os
 import json
@@ -601,6 +602,14 @@ class ResumeGroupListAPIView(APIView):
             # 构建响应数据
             groups_data = []
             for group in paginated_groups:
+                group_id = group.id
+                
+                # 这里也要更新简历组状态
+                updated, new_status = update_group_status_based_on_video_analysis(group_id)
+                if updated:
+                    group.status = new_status
+
+
                 # 获取关联的简历数据数量
                 resume_count = group.resumes.count()
                 
@@ -666,6 +675,11 @@ class ResumeGroupDetailAPIView(APIView):
                     {"error": "简历组不存在"}, 
                     status=status.HTTP_404_NOT_FOUND
                 )
+            
+            # 根据视频分析情况更新组状态
+            updated, new_status = update_group_status_based_on_video_analysis(group_id)
+            if updated:
+                group.status = new_status
             
             # 获取关联的简历数据数量
             resume_count = group.resumes.count()

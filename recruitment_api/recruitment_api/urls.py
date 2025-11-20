@@ -21,4 +21,5 @@ urlpatterns = [
     path('position-settings/', include('position_settings.urls')),
     path('resume-screening/', include('resume_screening.urls')),
     path('video-analysis/', include('video_analysis.urls')),
+    path('final-recommend/', include('final_recommend.urls')),
 ]

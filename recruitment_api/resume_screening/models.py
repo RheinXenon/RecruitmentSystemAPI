@@ -52,6 +52,7 @@ class ResumeGroup(models.Model):
     STATUS_CHOICES = [
         ('pending', '待分析'),
         ('interview_analysis', '面试分析中'),
+        ('interview_analysis_completed', '面试分析已完成'),
         ('comprehensive_screening', '综合筛选中'),
         ('completed', '已完成'),
     ]
