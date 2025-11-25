@@ -18,7 +18,8 @@ from .after_interview import run_interview_evaluation, generate_candidate_info
 
 logger = logging.getLogger(__name__)
 
-@method_decorator(csrf_exempt, name='dispatch')
+@method_decorator(csrf_exempt, name='post')
+@method_decorator(csrf_exempt, name='delete')
 class InterviewEvaluationView(View):
     """
     面试后评估视图
@@ -85,6 +86,44 @@ class InterviewEvaluationView(View):
                     'status': 'error',
                     'message': '缺少任务ID或简历组ID参数'
                 }, status=400)
+    
+    def delete(self, request, task_id=None):
+        """删除指定的任务记录"""
+        if not task_id:
+            return JsonResponse({
+                'status': 'error',
+                'message': '缺少任务ID参数'
+            }, status=400)
+        
+        try:
+            # 查找并删除任务记录
+            task = InterviewEvaluationTask.objects.get(id=task_id)
+            
+            # 删除关联的文件（如果存在）
+            if task.result_file:
+                # 删除文件系统中的文件
+                if os.path.isfile(task.result_file.path):
+                    os.remove(task.result_file.path)
+            
+            # 删除数据库记录
+            task.delete()
+            
+            return JsonResponse({
+                'status': 'success',
+                'message': f'任务 {task_id} 已成功删除'
+            })
+            
+        except InterviewEvaluationTask.DoesNotExist:
+            return JsonResponse({
+                'status': 'error',
+                'message': '未找到指定的任务'
+            }, status=404)
+        except Exception as e:
+            logger.error(f"删除任务时出错: {e}")
+            return JsonResponse({
+                'status': 'error',
+                'message': f'删除任务时出错: {str(e)}'
+            }, status=500)
     
     def _get_task_status(self, task_id):
         """通过任务ID获取任务状态"""
@@ -164,46 +203,7 @@ class InterviewEvaluationView(View):
                 'status': 'error',
                 'message': f'根据group_id获取任务状态时出错: {str(e)}'
             }, status=500)
-
-
-def download_report(request, file_path):
-    """
-    下载评估报告文件
-    文件路径格式: /interview_evaluation_reports/2025/11/20/文件名.md
-    """
-    try:
-        # 解码URL编码的文件路径
-        decoded_file_path = unquote(file_path)
-        
-        # 构建完整文件路径
-        full_file_path = os.path.join(settings.BASE_DIR, decoded_file_path.lstrip('/'))
-        
-        # 检查文件是否存在
-        if not os.path.exists(full_file_path):
-            return JsonResponse({
-                'status': 'error',
-                'message': '文件不存在'
-            }, status=404)
-        
-        # 获取文件名
-        filename = os.path.basename(full_file_path)
-        
-        # 返回文件响应
-        response = FileResponse(
-            open(full_file_path, 'rb'),
-            as_attachment=True,
-            filename=filename
-        )
-        return response
-        
-    except Exception as e:
-        logger.error(f"下载文件时出错: {e}")
-        return JsonResponse({
-            'status': 'error',
-            'message': f'下载文件时出错: {str(e)}'
-        }, status=500)
-
-
+    
     def _process_evaluation(self, task_id, group_id):
         """异步处理评估任务"""
         def update_speaker(speaker_name, message_count):
@@ -271,3 +271,41 @@ def download_report(request, file_path):
                 task.save()
             except Exception as save_error:
                 logger.error(f"保存任务失败状态时出错: {save_error}")
+
+
+def download_report(request, file_path):
+    """
+    下载评估报告文件
+    文件路径格式: /interview_evaluation_reports/2025/11/20/文件名.md
+    """
+    try:
+        # 解码URL编码的文件路径
+        decoded_file_path = unquote(file_path)
+        
+        # 构建完整文件路径
+        full_file_path = os.path.join(settings.BASE_DIR, decoded_file_path.lstrip('/'))
+        
+        # 检查文件是否存在
+        if not os.path.exists(full_file_path):
+            return JsonResponse({
+                'status': 'error',
+                'message': '文件不存在'
+            }, status=404)
+        
+        # 获取文件名
+        filename = os.path.basename(full_file_path)
+        
+        # 返回文件响应
+        response = FileResponse(
+            open(full_file_path, 'rb'),
+            as_attachment=True,
+            filename=filename
+        )
+        return response
+        
+    except Exception as e:
+        logger.error(f"下载文件时出错: {e}")
+        return JsonResponse({
+            'status': 'error',
+            'message': f'下载文件时出错: {str(e)}'
+        }, status=500)
