@@ -49,6 +49,15 @@ RecruitmentSystemAPI/
 │   │   ├── models.py               # 数据模型
 │   │   └── ...
 │   │
+│   ├── interview_assist/           # 面试辅助模块 (人在回路)
+│   │   ├── views.py                # 面试辅助 API
+│   │   ├── models.py               # 数据模型 (Session, QARecord)
+│   │   ├── urls.py                 # 路由配置
+│   │   ├── admin.py                # Admin 配置
+│   │   └── services/               # 核心服务
+│   │       ├── interview_assistant.py  # 面试辅助服务
+│   │       └── prompts.py          # Prompt 模板
+│   │
 │   └── screening_reports/          # 筛选报告存储目录
 │       └── 2025/                   # 按年份归档
 ```
@@ -193,6 +202,47 @@ RecruitmentSystemAPI/
 
 ---
 
+### 5. 面试辅助 (`/interview-assist/`) 🆕
+
+人在回路的面试官AI助手，为真人HR提供面试问题建议、回答评估和追问建议。
+
+#### 会话管理
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `POST` | `/interview-assist/sessions/` | 创建面试辅助会话 |
+| `GET` | `/interview-assist/sessions/<session_id>/` | 获取会话详情 |
+| `DELETE` | `/interview-assist/sessions/<session_id>/` | 结束会话 |
+
+#### 问题生成
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `POST` | `/interview-assist/sessions/<session_id>/generate-questions/` | 生成候选问题（基于简历+岗位） |
+| `POST` | `/interview-assist/sessions/<session_id>/generate-followup/` | 生成追问建议 |
+
+#### 问答记录与评估
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `POST` | `/interview-assist/sessions/<session_id>/record-qa/` | 记录问答并获取AI评估 |
+| `GET` | `/interview-assist/sessions/<session_id>/history/` | 获取问答历史 |
+
+#### 报告生成
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `POST` | `/interview-assist/sessions/<session_id>/generate-report/` | 生成最终评估报告 |
+
+**核心功能：**
+- 🎯 **基于简历的问题生成** - 自动识别简历中的兴趣点，生成针对性问题
+- 🔍 **浅层回答检测** - 识别"不懂装懂"的回答信号
+- 💡 **智能追问建议** - 基于回答质量提供追问建议
+- 📊 **多维度评估** - 技术深度、实践经验、诚实度等6个维度评分
+- 📝 **最终报告生成** - 自动生成面试评估报告
+
+---
+
 ## 🚀 快速开始
 
 ### 安装依赖
@@ -260,6 +310,7 @@ curl -X POST http://localhost:8000/video-analysis/ \
 | `resume_screening` | `ResumeScreeningTask`, `ScreeningReport`, `ResumeData`, `ResumeGroup` |
 | `video_analysis` | `VideoAnalysis` |
 | `final_recommend` | `InterviewEvaluationTask` |
+| `interview_assist` | `InterviewAssistSession`, `InterviewQARecord` |
 
 ---
 

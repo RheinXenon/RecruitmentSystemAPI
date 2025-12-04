@@ -22,4 +22,5 @@ urlpatterns = [
     path('resume-screening/', include('resume_screening.urls')),
     path('video-analysis/', include('video_analysis.urls')),
     path('final-recommend/', include('final_recommend.urls')),
+    path('interview-assist/', include('interview_assist.urls')),  # 面试辅助模块
 ]

@@ -40,7 +40,8 @@ INSTALLED_APPS = [
     "position_settings",
     "resume_screening",
     "video_analysis",
-    'final_recommend'
+    "final_recommend",
+    "interview_assist",  # 面试辅助模块 - 人在回路的面试官AI助手
 ]
 
 MIDDLEWARE = [
