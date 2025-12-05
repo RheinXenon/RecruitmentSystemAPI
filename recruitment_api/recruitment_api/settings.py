@@ -78,25 +78,26 @@ WSGI_APPLICATION = "recruitment_api.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-# DATABASES = {
-#     "default": {
-#         "ENGINE": "django.db.backends.sqlite3",
-#         "NAME": BASE_DIR / "db.sqlite3",
-#     }
-# }
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.mysql",
-        "NAME": "recruitment_db",
-        "USER": "root",
-        "PASSWORD": "",
-        "HOST": "localhost",  # 或者你的 MySQL 服务器地址
-        "PORT": "3306",       # MySQL 默认端口
-        "OPTIONS": {
-            'charset': 'utf8mb4',
-        },
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
     }
 }
+# MySQL 配置（如需使用 MySQL，注释上方 SQLite 配置并取消下方注释）
+# DATABASES = {
+#     "default": {
+#         "ENGINE": "django.db.backends.mysql",
+#         "NAME": "recruitment_db",
+#         "USER": "root",
+#         "PASSWORD": "",
+#         "HOST": "localhost",  # 或者你的 MySQL 服务器地址
+#         "PORT": "3306",       # MySQL 默认端口
+#         "OPTIONS": {
+#             'charset': 'utf8mb4',
+#         },
+#     }
+# }
 
 
 # Password validation
